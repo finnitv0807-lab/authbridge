@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | AuthBridge</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="logo" style="justify-content:center; margin-bottom:10px;">Auth<span>Bridge</span></div>
+                <p style="color:var(--text-muted);">Sign in to your dashboard</p>
+            </div>
+
+            <form action="dashboard.html">
+                <div class="form-group">
+                    <label>License Key</label>
+                    <input type="password" class="form-control" placeholder="Enter your key...">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Continue with Key</button>
+            </form>
+
+            <div class="divider">OR</div>
+
+            <button class="btn" style="width:100%; background:#5865F2; color:white; border:none;">
+                <span style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                    Login with Discord
+                </span>
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>

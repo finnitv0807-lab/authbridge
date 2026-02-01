@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuthBridge | License Exchange</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+    
+    <style>
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid #334155;
+        }
+
+        h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; text-align: center; }
+        p.subtitle { color: var(--text-muted); text-align: center; font-size: 0.9rem; margin-bottom: 24px; }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-input);
+            border: 1px solid #475569;
+            color: white;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: 0.2s;
+            outline: none;
+        }
+        input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover { background: var(--accent-hover); }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        /* Status Messages */
+        .status-box {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 8px;
+            display: none; /* Hidden by default */
+            font-size: 0.9rem;
+        }
+
+        .success { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); color: var(--success); }
+        .error { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--error); color: #fca5a5; }
+
+        .key-display {
+            margin-top: 10px;
+            background: #020617;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            color: white;
+            word-break: break-all;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-icon { cursor: pointer; color: var(--text-muted); transition: 0.2s; }
+        .copy-icon:hover { color: white; }
+
+        /* Spinner */
+        .loader {
+            border: 2px solid #f3f3f3; border-top: 2px solid var(--accent);
+            border-radius: 50%; width: 16px; height: 16px;
+            animation: spin 1s linear infinite; display: inline-block; vertical-align: middle;
+            margin-right: 8px; display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>License Exchange</h2>
+        <p class="subtitle">Turn your Payhip receipt into a GameGuard key.</p>
+
+        <div class="form-group">
+            <label>Payhip License Key</label>
+            <input type="text" id="payhipKey" placeholder="e.g. TEST-KEY-123">
+        </div>
+
+        <button id="submitBtn" onclick="redeem()">
+            <span class="loader" id="spinner"></span>
+            <span id="btnText">Redeem Key</span>
+        </button>
+
+        <div id="successBox" class="status-box success">
+            <strong>Success!</strong> License Verified.
+            <div style="margin-top:5px; color:#cbd5e1; font-size:0.8em;">Product: <span id="prodId"></span></div>
+            
+            <div class="key-display">
+                <code id="serverKey">---</code>
+                <span class="material-symbols-outlined copy-icon" onclick="copyKey()">content_copy</span>
+            </div>
+            <p style="margin-top:10px; font-size:0.8em;">Copy this key into your Roblox script.</p>
+        </div>
+
+        <div id="errorBox" class="status-box error"></div>
+    </div>
+</div>
+
+<script>
+    // --- 1. CRITICAL CHECK ---
+    // If you double-clicked the file, this will stop you immediately.
+    if (window.location.protocol === 'file:') {
+        document.body.innerHTML = '<h1 style="color:red; text-align:center; margin-top:20%">STOP!</h1><p style="text-align:center; color:white;">You opened this file directly.</p><p style="text-align:center; color:white;">You MUST access this via <b>http://localhost:8080</b> or your <b>Cloudflare Link</b>.</p>';
+        throw new Error("Wrong Protocol");
+    }
+
+    async function redeem() {
+        const keyInput = document.getElementById('payhipKey');
+        const btn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('spinner');
+        const btnText = document.getElementById('btnText');
+        const successBox = document.getElementById('successBox');
+        const errorBox = document.getElementById('errorBox');
+
+        // Reset UI
+        successBox.style.display = 'none';
+        errorBox.style.display = 'none';
+        
+        const key = keyInput.value.trim();
+        if (!key) {
+            showError("Please enter a license key.");
+            return;
+        }
+
+        // Loading State
+        btn.disabled = true;
+        spinner.style.display = 'inline-block';
+        btnText.innerText = "Verifying...";
+
+        try {
+            // Call YOUR Server
+            // If this fails, the server isn't running or isn't reachable
+            const response = await fetch('/api/redeem_payhip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payhip_key: key })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.status === 'success') {
+                // SUCCESS
+                document.getElementById('serverKey').innerText = data.server_key;
+                document.getElementById('prodId').innerText = data.product_id;
+                successBox.style.display = 'block';
+                keyInput.value = ""; // Clear input
+            } else {
+                // SERVER ERROR (Invalid Key, etc)
+                showError(data.error || "Invalid Key");
+            }
+
+        } catch (err) {
+            // NETWORK ERROR (Server down, Tunnel broke)
+            console.error(err);
+            showError("Connection Failed. Is the server running?");
+        } finally {
+            // Reset Button
+            btn.disabled = false;
+            spinner.style.display = 'none';
+            btnText.innerText = "Redeem Key";
+        }
+    }
+
+    function showError(msg) {
+        const box = document.getElementById('errorBox');
+        box.innerText = msg;
+        box.style.display = 'block';
+    }
+
+    function copyKey() {
+        const text = document.getElementById('serverKey').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById('btnText');
+            const original = btn.innerText;
+            btn.innerText = "Copied!";
+            setTimeout(() => btn.innerText = original, 1500);
+        });
+    }
+</script>
+
+</body>
+</html>

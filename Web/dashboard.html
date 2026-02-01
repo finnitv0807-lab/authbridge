@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | AuthBridge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --input: #334155;
+            --text: #f8fafc;
+            --accent: #3b82f6;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        
+        body { background: var(--bg); color: var(--text); padding: 20px; }
+        
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        /* Profile Header */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--input);
+        }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--input); }
+        .logout { color: #ef4444; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+
+        /* Card Styles */
+        .card {
+            background: var(--card); border-radius: 12px; padding: 25px;
+            border: 1px solid var(--input); box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        input {
+            width: 100%; padding: 12px; margin: 10px 0;
+            background: var(--input); border: 1px solid #475569;
+            color: white; border-radius: 8px; outline: none;
+        }
+        
+        button {
+            width: 100%; padding: 12px; background: var(--accent);
+            border: none; color: white; border-radius: 8px;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        button:hover { background: #2563eb; }
+
+        /* Result Box */
+        .result-box {
+            margin-top: 20px; padding: 15px; border-radius: 8px; display: none;
+        }
+        .success { background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; }
+        .error { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; }
+        
+        code {
+            display: block; background: #020617; padding: 10px;
+            border-radius: 6px; margin-top: 8px; font-family: monospace;
+            word-break: break-all; color: #10b981;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="user-info">
+            <img id="avatar" class="avatar" src="">
+            <div>
+                <div id="username" style="font-weight: 700;">Loading...</div>
+                <div style="font-size: 0.8rem; color: #94a3b8;">Logged in with Discord</div>
+            </div>
+        </div>
+        <a href="/logout" class="logout">Sign Out</a>
+    </div>
+
+    <div class="card">
+        <h2>Redeem License</h2>
+        <p style="color: #94a3b8; margin-bottom: 20px; font-size: 0.9rem;">
+            Enter your Payhip License Key to link it to your account.
+        </p>
+
+        <input type="text" id="payhipInput" placeholder="Enter Key (e.g. TEST-KEY-123)">
+        <button id="redeemBtn" onclick="redeem()">Link License</button>
+
+        <div id="resultBox" class="result-box">
+            <h4 id="resTitle"></h4>
+            <p id="resMsg" style="font-size: 0.9rem; color: #cbd5e1;"></p>
+            <code id="resKey" style="display:none;"></code>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Auth Check (Runs immediately)
+    fetch('/api/me')
+        .then(res => {
+            if (res.status === 401) {
+                window.location.href = '/'; // Kick to login if session missing
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                document.getElementById('username').innerText = data.username;
+                document.getElementById('avatar').src = data.avatar;
+            }
+        });
+
+    // 2. Redeem Logic
+    async function redeem() {
+        const input = document.getElementById('payhipInput');
+        const box = document.getElementById('resultBox');
+        const title = document.getElementById('resTitle');
+        const msg = document.getElementById('resMsg');
+        const keyDisplay = document.getElementById('resKey');
+        const btn = document.getElementById('redeemBtn');
+
+        // Reset UI
+        box.style.display = 'none';
+        keyDisplay.style.display = 'none';
+        btn.disabled = true;
+        btn.innerText = "Verifying...";
+
+        try {
+            const res = await fetch('/api/redeem_payhip', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ payhip_key: input.value })
+            });
+
+            const data = await res.json();
+
+            box.style.display = 'block';
+            if (data.status === 'success') {
+                box.className = 'result-box success';
+                title.innerText = "License Linked!";
+                title.style.color = '#10b981';
+                msg.innerText = `Product ID: ${data.product_id}`;
+                
+                keyDisplay.style.display = 'block';
+                keyDisplay.innerText = data.server_key;
+                
+                input.value = ""; // Clear input
+            } else {
+                box.className = 'result-box error';
+                title.innerText = "Error";
+                title.style.color = '#ef4444';
+                msg.innerText = data.error || "Invalid Key";
+            }
+        } catch (e) {
+            box.style.display = 'block';
+            box.className = 'result-box error';
+            title.innerText = "Connection Failed";
+            msg.innerText = "Server unreachable.";
+        }
+
+        btn.disabled = false;
+        btn.innerText = "Link License";
+    }
+</script>
+
+</body>
+</html>
